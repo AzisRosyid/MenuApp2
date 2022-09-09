@@ -17,6 +17,8 @@ import com.example.menuapp.databinding.ActivityUpdateBinding
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
@@ -77,22 +79,18 @@ class UpdateActivity : AppCompatActivity(), UploadRequestBody.UploadCallback {
     }
 
     private fun uploadImage() {
-        val parcelFileDescriptor = contentResolver.openFileDescriptor(selectedImage!!, "r", null) ?: return
-        val inputStream = FileInputStream(parcelFileDescriptor.fileDescriptor)
         val file = File(cacheDir, contentResolver.getFileName(selectedImage!!))
-        val outputStream = FileOutputStream(file)
-        inputStream.copyTo(outputStream)
 
         binding.progressImage.visibility = View.VISIBLE
         binding.progressImage.progress = 0
         val body = UploadRequestBody(file, "image", this)
         api.updateMenu(
             menu.id,
-            RequestBody.create("multipart/form-data".toMediaTypeOrNull(), binding.nameMenu.text.toString()),
-            RequestBody.create("multipart/form-data".toMediaTypeOrNull(), binding.priceMenu.text.toString()),
-            RequestBody.create("multipart/form-data".toMediaTypeOrNull(), binding.carboMenu.text.toString()),
-            RequestBody.create("multipart/form-data".toMediaTypeOrNull(), binding.proteinMenu.text.toString()),
-            MultipartBody.Part.createFormData("photo", file.name, body)
+            binding.nameMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
+            binding.priceMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
+            binding.carboMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
+            binding.proteinMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
+            MultipartBody.Part.createFormData("photo", file.name, file.asRequestBody("multipart/form-data".toMediaTypeOrNull()))
         ).enqueue(object :
             Callback<ResponseModel> {
             override fun onResponse(
@@ -111,8 +109,6 @@ class UpdateActivity : AppCompatActivity(), UploadRequestBody.UploadCallback {
                 Log.e("onFailure", t.toString())
             }
         })
-        binding.progressImage.progress = 100
-        binding.progressImage.visibility = View.GONE
     }
 
     private fun openImageChooser() {
