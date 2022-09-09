@@ -8,6 +8,8 @@ import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat.startActivityForResult
 import androidx.core.text.isDigitsOnly
 import com.bumptech.glide.Glide
 import com.example.menuapp.Api.ApiRetrofit
@@ -27,11 +29,12 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
-class UpdateActivity : AppCompatActivity(), UploadRequestBody.UploadCallback {
+class UpdateActivity : AppCompatActivity() {
     lateinit var binding: ActivityUpdateBinding
     private val api by lazy { ApiRetrofit().apiEndPoint }
     private val menu by lazy { intent.getSerializableExtra("menu") as Menu }
     private var selectedImage: Uri? = null
+    private var body: MultipartBody.Part? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,32 +68,28 @@ class UpdateActivity : AppCompatActivity(), UploadRequestBody.UploadCallback {
             else if (!binding.priceMenu.text.isDigitsOnly() || !binding.carboMenu.text.isDigitsOnly() || !binding.proteinMenu.text.isDigitsOnly()) {
                 Helper.message("Price, Carbo, and Protein format must be number",this, false)
             }
-            else if (selectedImage == null){
-                Helper.message("Select image first", this, false)
-            }
             else {
                 uploadImage()
             }
             binding.progressBar.visibility = View.GONE
         }
         binding.uploadImage.setOnClickListener {
-            openImageChooser()
+            openImageLauncher.launch("image/*")
         }
     }
 
     private fun uploadImage() {
-        val file = File(cacheDir, contentResolver.getFileName(selectedImage!!))
-
-        binding.progressImage.visibility = View.VISIBLE
-        binding.progressImage.progress = 0
-        val body = UploadRequestBody(file, "image", this)
+        if (selectedImage != null) {
+            val file = File(cacheDir, contentResolver.getFileName(selectedImage!!))
+            body = MultipartBody.Part.createFormData("photo", file.name, file.asRequestBody("multipart/form-data".toMediaTypeOrNull()))
+        }
         api.updateMenu(
             menu.id,
             binding.nameMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
             binding.priceMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
             binding.carboMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
             binding.proteinMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
-            MultipartBody.Part.createFormData("photo", file.name, file.asRequestBody("multipart/form-data".toMediaTypeOrNull()))
+            body
         ).enqueue(object :
             Callback<ResponseModel> {
             override fun onResponse(
@@ -111,32 +110,8 @@ class UpdateActivity : AppCompatActivity(), UploadRequestBody.UploadCallback {
         })
     }
 
-    private fun openImageChooser() {
-        Intent(Intent.ACTION_PICK).also {
-            it.type = "image/*"
-            val mimeTypes = arrayOf("image/jpeg", "image/png", "image/jpg")
-            it.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
-            startActivityForResult(it, REQUEST_CODE_IMAGE_PICKER)
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if(resultCode == Activity.RESULT_OK){
-            when(requestCode){
-                REQUEST_CODE_IMAGE_PICKER ->{
-                    selectedImage = data?.data
-                    binding.imageMenu.setImageURI(selectedImage)
-                }
-            }
-        }
-    }
-
-    override fun onProgressUpdate(percentage: Int) {
-
-    }
-
-    companion object {
-        private const val REQUEST_CODE_IMAGE_PICKER = 100
+    private val openImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()){ result ->
+        selectedImage = result
+        binding.imageMenu.setImageURI(selectedImage)
     }
 }

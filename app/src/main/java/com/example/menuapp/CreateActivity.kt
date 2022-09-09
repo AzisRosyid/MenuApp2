@@ -31,6 +31,7 @@ class CreateActivity : AppCompatActivity() {
     lateinit var binding: ActivityCreateBinding
     private val api by lazy { ApiRetrofit().apiEndPoint }
     private var selectedImage: Uri? = null
+    private var body: MultipartBody.Part? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,9 +56,6 @@ class CreateActivity : AppCompatActivity() {
             else if (!binding.priceMenu.text.isDigitsOnly() || !binding.carboMenu.text.isDigitsOnly() || !binding.proteinMenu.text.isDigitsOnly()) {
                 Helper.message("Price, Carbo, and Protein format must be number", this, false)
             }
-            else if (selectedImage == null){
-                Helper.message("Insert image first", this, false)
-            }
             else {
                 uploadImage()
             }
@@ -69,14 +67,17 @@ class CreateActivity : AppCompatActivity() {
     }
 
     private fun uploadImage() {
-        val file = File(cacheDir, contentResolver.getFileName(selectedImage!!))
-
+        if (selectedImage != null) {
+            val file = File(cacheDir, contentResolver.getFileName(selectedImage!!))
+            body = MultipartBody.Part.createFormData("photo", file.name, file.asRequestBody("multipart/form-data".toMediaTypeOrNull()))
+        }
         binding.progressImage.visibility = View.VISIBLE
         api.createMenu(
             binding.nameMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
             binding.priceMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
             binding.carboMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
-            binding.proteinMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()), MultipartBody.Part.createFormData("photo", file.name, file.asRequestBody("multipart/form-data".toMediaTypeOrNull()))
+            binding.proteinMenu.text.toString().toRequestBody("multipart/form-data".toMediaTypeOrNull()),
+            body
         ).enqueue(object :
             Callback<ResponseModel> {
             override fun onResponse(

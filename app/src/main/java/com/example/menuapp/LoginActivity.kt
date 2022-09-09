@@ -24,7 +24,7 @@ class LoginActivity : AppCompatActivity() {
         supportActionBar?.title = "Login Menu"
         setupListener()
 
-        binding.emailUser.setText("user@gmail.com")
+        binding.emailUser.setText("admin@gmail.com")
         binding.passwordUser.setText("12345678")
     }
 
